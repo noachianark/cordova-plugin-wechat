@@ -1,4 +1,4 @@
-package xu.li.cordova.weixin;
+package xu.li.cordova.wechat;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -20,7 +20,7 @@ import com.tencent.mm.sdk.openapi.WXMediaMessage;
 import com.tencent.mm.sdk.openapi.WXTextObject;
 import com.tencent.mm.sdk.openapi.WXWebpageObject;
 
-public class Weixin extends CordovaPlugin {
+public class Wechat extends CordovaPlugin {
 
 	public static final String WXAPPID_PROPERTY_KEY = "weixinappid";
 
