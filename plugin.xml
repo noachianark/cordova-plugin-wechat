@@ -29,7 +29,11 @@
         </config-file>
 
         <header-file src="src/ios/CDVWechat.h" />
+        <header-file src="src/ios/WXApi.h" />
+        <header-file src="src/ios/WXApiObject.h"/>
         <source-file src="src/ios/CDVWechat.m" />
+        <source-file src="src/ios/libWeChatSDK.a"/>
+
     </platform>
 
     <!-- android -->
@@ -41,5 +45,6 @@
         </config-file>
 
         <source-file src="src/android/Wechat.java" target-dir="src/xu/li/cordova/wechat" />
+        <source-file src="src/android/libammsdk.jar" target-dir="libs"/>
     </platform>
 </plugin>
