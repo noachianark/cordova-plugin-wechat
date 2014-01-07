@@ -1,5 +1,7 @@
 package xu.li.cordova.wechat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -22,7 +24,7 @@ import com.tencent.mm.sdk.openapi.WXWebpageObject;
 
 public class Wechat extends CordovaPlugin {
 
-	public static final String WXAPPID_PROPERTY_KEY = "weixinappid";
+	public static final String WXAPPID_PROPERTY_KEY = "wechatappid";
 
 	public static final String ERROR_WX_NOT_INSTALLED = "未安装微信";
 	public static final String ERROR_ARGUMENTS = "参数错误";
@@ -45,15 +47,13 @@ public class Wechat extends CordovaPlugin {
 	public static final int TYPE_WX_SHARING_VIDEO = 6;
 	public static final int TYPE_WX_SHARING_WEBPAGE = 7;
 	public static final int TYPE_WX_SHARING_TEXT = 8;
-	
 
 	protected IWXAPI wxAPI;
 	protected CallbackContext currentCallbackContext;
 
 	@Override
-	public boolean execute(String action, JSONArray args,
-			CallbackContext callbackContext) throws JSONException {
-		
+	public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+
 		if (action.equals("share")) {
 			// sharing
 			return share(args, callbackContext);
@@ -71,8 +71,7 @@ public class Wechat extends CordovaPlugin {
 		return wxAPI;
 	}
 
-	protected boolean share(JSONArray args, CallbackContext callbackContext)
-			throws JSONException {
+	protected boolean share(JSONArray args, CallbackContext callbackContext) throws JSONException {
 		final IWXAPI api = getWXAPI();
 
 		api.registerApp(webView.getProperty(WXAPPID_PROPERTY_KEY, ""));
@@ -104,12 +103,14 @@ public class Wechat extends CordovaPlugin {
 			@Override
 			public void run() {
 				try {
-					req.message = buildSharingMessage(params
-							.getJSONObject(KEY_ARG_MESSAGE));
+					req.message = buildSharingMessage(params.getJSONObject(KEY_ARG_MESSAGE));
 				} catch (JSONException e) {
 					e.printStackTrace();
 				}
-				api.sendReq(req);
+
+				if (api.sendReq(req)) {
+					currentCallbackContext.success();
+				}
 			}
 
 		});
@@ -119,15 +120,13 @@ public class Wechat extends CordovaPlugin {
 		return true;
 	}
 
-	protected WXMediaMessage buildSharingMessage(JSONObject message)
-			throws JSONException {
+	protected WXMediaMessage buildSharingMessage(JSONObject message) throws JSONException {
 		URL thumbnailUrl = null;
 		Bitmap thumbnail = null;
 
 		try {
 			thumbnailUrl = new URL(message.getString(KEY_ARG_MESSAGE_THUMB));
-			thumbnail = BitmapFactory.decodeStream(thumbnailUrl
-					.openConnection().getInputStream());
+			thumbnail = compressImageBySize(BitmapFactory.decodeStream(thumbnailUrl.openConnection().getInputStream()));
 
 		} catch (MalformedURLException e1) {
 			e1.printStackTrace();
@@ -137,8 +136,7 @@ public class Wechat extends CordovaPlugin {
 
 		WXMediaMessage wxMediaMessage = new WXMediaMessage();
 		wxMediaMessage.title = message.getString(KEY_ARG_MESSAGE_TITLE);
-		wxMediaMessage.description = message
-				.getString(KEY_ARG_MESSAGE_DESCRIPTION);
+		wxMediaMessage.description = message.getString(KEY_ARG_MESSAGE_DESCRIPTION);
 		if (thumbnail != null) {
 			wxMediaMessage.setThumbImage(thumbnail);
 		}
@@ -148,8 +146,7 @@ public class Wechat extends CordovaPlugin {
 		JSONObject media = message.getJSONObject(KEY_ARG_MESSAGE_MEDIA);
 
 		// check types
-		int type = media.has(KEY_ARG_MESSAGE_MEDIA_TYPE) ? media
-				.getInt(KEY_ARG_MESSAGE_MEDIA_TYPE) : TYPE_WX_SHARING_WEBPAGE;
+		int type = media.has(KEY_ARG_MESSAGE_MEDIA_TYPE) ? media.getInt(KEY_ARG_MESSAGE_MEDIA_TYPE) : TYPE_WX_SHARING_WEBPAGE;
 		switch (type) {
 		case TYPE_WX_SHARING_APP:
 			break;
@@ -168,22 +165,70 @@ public class Wechat extends CordovaPlugin {
 
 		case TYPE_WX_SHARING_VIDEO:
 			break;
-			
+
 		case TYPE_WX_SHARING_TEXT:
 			mediaObject = new WXTextObject();
-			((WXTextObject)mediaObject).text = media.getString(KEY_ARG_MESSAGE_MEDIA_TEXT);
+			((WXTextObject) mediaObject).text = media.getString(KEY_ARG_MESSAGE_MEDIA_TEXT);
 			break;
 
 		case TYPE_WX_SHARING_WEBPAGE:
 		default:
 			mediaObject = new WXWebpageObject();
-			((WXWebpageObject) mediaObject).webpageUrl = media
-					.getString(KEY_ARG_MESSAGE_MEDIA_WEBPAGEURL);
+			((WXWebpageObject) mediaObject).webpageUrl = media.getString(KEY_ARG_MESSAGE_MEDIA_WEBPAGEURL);
 		}
 
 		wxMediaMessage.mediaObject = mediaObject;
 
 		return wxMediaMessage;
 	}
-}
 
+	private Bitmap compressImageByQuality(Bitmap image) {
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		image.compress(Bitmap.CompressFormat.JPEG, 100, baos);// 质量压缩方法，这里100表示不压缩，把压缩后的数据存放到baos中
+		int options = 100;
+		while (baos.toByteArray().length / 1024 > 32) { // 循环判断如果压缩后图片是否大于32kb,大于继续压缩
+			baos.reset();// 重置baos即清空baos
+			image.compress(Bitmap.CompressFormat.JPEG, options, baos);// 这里压缩options%，把压缩后的数据存放到baos中
+			options -= 10;// 每次都减少10
+		}
+		ByteArrayInputStream isBm = new ByteArrayInputStream(baos.toByteArray());// 把压缩后的数据baos存放到ByteArrayInputStream中
+		Bitmap bitmap = BitmapFactory.decodeStream(isBm, null, null);// 把ByteArrayInputStream数据生成图片
+		return bitmap;
+	}
+
+	private Bitmap compressImageBySize(Bitmap image) {
+
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		image.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+		if (baos.toByteArray().length / 1024 > 1024) {// 判断如果图片大于1M,进行压缩避免在生成图片（BitmapFactory.decodeStream）时溢出
+			baos.reset();// 重置baos即清空baos
+			image.compress(Bitmap.CompressFormat.JPEG, 50, baos);// 这里压缩50%，把压缩后的数据存放到baos中
+		}
+		ByteArrayInputStream isBm = new ByteArrayInputStream(baos.toByteArray());
+		BitmapFactory.Options newOpts = new BitmapFactory.Options();
+		// 开始读入图片，此时把options.inJustDecodeBounds 设回true了
+		newOpts.inJustDecodeBounds = true;
+		Bitmap bitmap = BitmapFactory.decodeStream(isBm, null, newOpts);
+		newOpts.inJustDecodeBounds = false;
+		int w = newOpts.outWidth;
+		int h = newOpts.outHeight;
+
+		float hh = 200f;// 这里设置高度为400f
+		float ww = 150f;// 这里设置宽度为300f
+		// 缩放比。由于是固定比例缩放，只用高或者宽其中一个数据进行计算即可
+		int be = 1;// be=1表示不缩放
+		if (w > h && w > ww) {// 如果宽度大的话根据宽度固定大小缩放
+			be = (int) (newOpts.outWidth / ww);
+		} else if (w < h && h > hh) {// 如果高度高的话根据宽度固定大小缩放
+			be = (int) (newOpts.outHeight / hh);
+		}
+		if (be <= 0)
+			be = 1;
+		newOpts.inSampleSize = be;// 设置缩放比例
+		// 重新读入图片，注意此时已经把options.inJustDecodeBounds 设回false了
+		isBm = new ByteArrayInputStream(baos.toByteArray());
+		bitmap = BitmapFactory.decodeStream(isBm, null, newOpts);
+		return compressImageByQuality(bitmap);// 压缩好比例大小后再进行质量压缩
+	}
+}
