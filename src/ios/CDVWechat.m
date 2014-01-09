@@ -156,7 +156,7 @@
     if (!_wechatAppId)
     {
         CDVViewController *viewController = (CDVViewController *)self.viewController;
-        _wechatAppId = [viewController.settings objectForKey:@"wechatappid"];
+        _wechatAppId = [viewController.settings objectForKey:@"WechatAppId"];
     }
     
     return _wechatAppId;
