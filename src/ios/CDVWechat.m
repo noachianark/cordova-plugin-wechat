@@ -15,23 +15,23 @@
 - (void)share:(CDVInvokedUrlCommand *)command
 {
     [WXApi registerApp:self.wechatAppId];
-
+    
     CDVPluginResult *result = nil;
     // if not installed
     if (![WXApi isWXAppInstalled])
     {
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"未安装微信"];
-
+        
         [self error:result callbackId:command.callbackId];
         return ;
     }
-
+    
     // check arguments
     NSDictionary *params = [command.arguments objectAtIndex:0];
     if (!params)
     {
         result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"参数错误"];
-
+        
         [self error:result callbackId:command.callbackId];
         return ;
     }
@@ -53,11 +53,11 @@
     
     // message or text?
     NSDictionary *message = [params objectForKey:@"message"];
-
+    
     if (message)
     {
         req.bText = NO;
-
+        
         // async
         [self.commandDelegate runInBackground:^{
             req.message = [self buildSharingMessage:message];
@@ -96,27 +96,27 @@
             case WXSuccess:
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
                 success = YES;
-            break;
-            
+                break;
+                
             case WXErrCodeCommon:
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"普通错误类型"];
-            break;
-            
+                break;
+                
             case WXErrCodeUserCancel:
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"用户点击取消并返回"];
-            break;
-            
+                break;
+                
             case WXErrCodeSentFail:
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"发送失败"];
-            break;
-            
+                break;
+                
             case WXErrCodeAuthDeny:
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"授权失败"];
-            break;
-            
+                break;
+                
             case WXErrCodeUnsupport:
                 result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"微信不支持"];
-            break;
+                break;
         }
     }
     
@@ -169,7 +169,6 @@
     wxMediaMessage.description = [message objectForKey:@"description"];
     wxMediaMessage.mediaTagName = [message objectForKey:@"mediaTagName"];
     [wxMediaMessage setThumbImage:[self getUIImageFromURL:[message objectForKey:@"thumb"]]];
-    
     // media parameters
     id mediaObject = nil;
     NSDictionary *media = [message objectForKey:@"media"];
@@ -179,32 +178,46 @@
     switch (type)
     {
         case CDVWXSharingTypeApp:
-        break;
-    
+            break;
+            
         case CDVWXSharingTypeEmotion:
-        break;
-        
+            break;
+            
         case CDVWXSharingTypeFile:
-        break;
-        
+            break;
+            
         case CDVWXSharingTypeImage:
-        break;
-        
+            break;
+            
         case CDVWXSharingTypeMusic:
-        break;
-        
+            break;
+            
         case CDVWXSharingTypeVideo:
-        break;
-        
+            break;
+            
         case CDVWXSharingTypeWebPage:
         default:
-        mediaObject = [WXWebpageObject object];
-        ((WXWebpageObject *)mediaObject).webpageUrl = [media objectForKey:@"webpageUrl"];
+            mediaObject = [WXWebpageObject object];
+            ((WXWebpageObject *)mediaObject).webpageUrl = [media objectForKey:@"webpageUrl"];
     }
-
+    
     wxMediaMessage.mediaObject = mediaObject;
     return wxMediaMessage;
 }
+
+//- (UIImage *)scaleImageSize:(UIImage *)img
+//{
+//    CGSize * size = [CGSize img.size];
+//
+//
+//    UIGraphicsBeginImageContext();
+//
+//    [img drawInRect:CGRectMake(0, 0, img.size.width/2, img.size.height/2)];
+//
+//    UIImage * newImage = UIGraphicsGetImageFromCurrentImageContext();
+//
+//    UIGraphicsEndImageContext();
+//}
 
 - (UIImage *)getUIImageFromURL:(NSString *)thumb
 {
@@ -220,8 +233,13 @@
     {
         data = [NSData dataWithContentsOfURL:thumbUrl];
     }
-
-    return [UIImage imageWithData:data];
+    
+    //compress here
+    
+    UIImage *img = [UIImage imageWithData:data];
+    NSData *imgData = UIImageJPEGRepresentation(img,0);
+    
+    return [UIImage imageWithData:imgData];
 }
 
 @end
